@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}{{ company.name }} ({{ company.ticker }}) — StockIQ{% endblock %}
+{% block meta_description %}{{ company.name }} stock analysis: classification, financials, AI insights, risks, and investor Q&A on StockIQ.{% endblock %}
+
+{% block content %}
+
+<!-- ── Stock Header ───────────────────────────────────────────────────────── -->
+<section class="stock-hero">
+  <div class="container-xl">
+    <div class="breadcrumb-row">
+      <a href="{{ url_for('main.index') }}"><i class="bi bi-house"></i> Home</a>
+      <span>/</span>
+      <span>{{ company.sector }}</span>
+      <span>/</span>
+      <span>{{ company.ticker }}</span>
+    </div>
+
+    <div class="stock-hero-inner">
+      <div class="stock-hero-left">
+        <div class="stock-hero-avatar">{{ company.ticker[:2] }}</div>
+        <div>
+          <h1 class="stock-hero-name">{{ company.name }}</h1>
+          <div class="stock-hero-meta">
+            <span class="badge-sector">{{ company.sector }}</span>
+            <span class="badge-industry">{{ company.industry }}</span>
+            {% if company.listing_year %}
+            <span class="badge-year">Listed {{ company.listing_year }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="stock-hero-price">
+        <div class="price-display">₹{{ "%.2f"|format(company.current_price) if company.current_price else 'N/A' }}</div>
+        <div class="price-label">Current Price</div>
+        {% if company.week_high_52 and company.week_low_52 %}
+        <div class="price-range-bar">
+          <span class="range-low">₹{{ "%.0f"|format(company.week_low_52) }}</span>
+          <div class="range-track">
+            {% set pct = ((company.current_price - company.week_low_52) / (company.week_high_52 - company.week_low_52) * 100) | round | int if company.current_price else 50 %}
+            <div class="range-fill" style="width: {{ pct }}%"></div>
+          </div>
+          <span class="range-high">₹{{ "%.0f"|format(company.week_high_52) }}</span>
+        </div>
+        <div class="price-range-label">52-week range</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Main Content Layout ────────────────────────────────────────────────── -->
+<div class="stock-body">
+  <div class="container-xl">
+    <div class="stock-layout">
+
+      <!-- LEFT COLUMN: Metrics + Classification + Shareholding -->
+      <aside class="stock-sidebar">
+
+        <!-- Key Metrics Card -->
+        <div class="siq-card metrics-card">
+          <div class="card-title-row">
+            <h3 class="card-title">Key Metrics</h3>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-label">Market Cap</span>
+              <span class="metric-value">
+                {% if company.market_cap %}
+                  {% if company.market_cap >= 100000 %}
+                    ₹{{ "%.2f"|format(company.market_cap / 100000) }} L Cr
+                  {% else %}
+                    ₹{{ "{:,.0f}".format(company.market_cap) }} Cr
+                  {% endif %}
+                {% else %}N/A{% endif %}
+              </span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">P/E Ratio</span>
+              <span class="metric-value">{{ "%.1f"|format(company.pe_ratio) ~ "x" if company.pe_ratio else "N/A" }}</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">P/B Ratio</span>
+              <span class="metric-value">{{ "%.2f"|format(company.pb_ratio) ~ "x" if company.pb_ratio else "N/A" }}</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Dividend Yield</span>
+              <span class="metric-value">{{ "%.2f"|format(company.dividend_yield) ~ "%" if company.dividend_yield else "—" }}</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">EPS</span>
+              <span class="metric-value">{{ "₹%.2f"|format(company.eps) if company.eps else "N/A" }}</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Book Value</span>
+              <span class="metric-value">{{ "₹%.0f"|format(company.book_value) if company.book_value else "N/A" }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quality Metrics -->
+        {% if quality %}
+        <div class="siq-card metrics-card">
+          <div class="card-title-row">
+            <h3 class="card-title">Profitability</h3>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-label">ROE</span>
+              <span class="metric-value {% if quality.roe and quality.roe > 20 %}value-good{% elif quality.roe and quality.roe < 10 %}value-warn{% endif %}">
+                {{ "%.1f"|format(quality.roe) ~ "%" if quality.roe else "N/A" }}
+              </span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">ROCE</span>
+              <span class="metric-value {% if quality.roce and quality.roce > 20 %}value-good{% elif quality.roce and quality.roce < 10 %}value-warn{% endif %}">
+                {{ "%.1f"|format(quality.roce) ~ "%" if quality.roce else "N/A" }}
+              </span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Net Margin</span>
+              <span class="metric-value">{{ "%.1f"|format(quality.profit_margin) ~ "%" if quality.profit_margin else "N/A" }}</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Debt/Equity</span>
+              <span class="metric-value {% if quality.debt_to_equity and quality.debt_to_equity > 1.5 %}value-warn{% elif quality.debt_to_equity and quality.debt_to_equity < 0.5 %}value-good{% endif %}">
+                {{ "%.2f"|format(quality.debt_to_equity) ~ "x" if quality.debt_to_equity is not none else "N/A" }}
+              </span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Int. Coverage</span>
+              <span class="metric-value">{{ "%.1f"|format(quality.interest_coverage) ~ "x" if quality.interest_coverage else "N/A" }}</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Curr. Ratio</span>
+              <span class="metric-value">{{ "%.2f"|format(quality.current_ratio) ~ "x" if quality.current_ratio else "N/A" }}</span>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Classification Card -->
+        {% if classification %}
+        <div class="siq-card classification-card bucket-{{ classification.primary_bucket | lower | replace(' ', '-') }}">
+          <div class="card-title-row">
+            <h3 class="card-title">Stock Classification</h3>
+            <span class="confidence-badge">{{ classification.confidence_score | round | int }}% confidence</span>
+          </div>
+          <div class="bucket-display">
+            <div class="bucket-icon">{{ bucket_icon(classification.primary_bucket) }}</div>
+            <div class="bucket-name">{{ classification.primary_bucket }}</div>
+          </div>
+          <div class="bucket-reasoning">
+            {% for reason in classification.reasoning %}
+            <div class="reason-item">
+              <i class="bi bi-check-circle-fill"></i>
+              <span>{{ reason }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Shareholding Card -->
+        {% if shareholding %}
+        <div class="siq-card shareholding-card">
+          <div class="card-title-row">
+            <h3 class="card-title">Shareholding</h3>
+            {% if shareholding.as_of_date %}
+            <span class="data-date">{{ shareholding.as_of_date }}</span>
+            {% endif %}
+          </div>
+          <div class="shareholding-bars">
+            {% set groups = [
+              ('Promoters', shareholding.promoter_holding, 'bar-promoter'),
+              ('FII', shareholding.fii_holding, 'bar-fii'),
+              ('DII', shareholding.dii_holding, 'bar-dii'),
+              ('Public', shareholding.public_holding, 'bar-public'),
+            ] %}
+            {% for label, pct, cls in groups %}
+            <div class="sh-bar-row">
+              <span class="sh-label">{{ label }}</span>
+              <div class="sh-track">
+                <div class="sh-fill {{ cls }}" style="width: {{ pct or 0 }}%"></div>
+              </div>
+              <span class="sh-pct">{{ "%.1f"|format(pct) ~ "%" if pct is not none else "—" }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+      </aside>
+
+      <!-- RIGHT COLUMN: Insights + Growth + Q&A -->
+      <div class="stock-main">
+
+        <!-- Growth Metrics -->
+        {% if growth %}
+        <div class="siq-card growth-card">
+          <div class="card-title-row">
+            <h3 class="card-title">Growth Trajectory</h3>
+          </div>
+          <div class="growth-table-wrap">
+            <table class="growth-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>1 Year</th>
+                  <th>3 Year CAGR</th>
+                  <th>5 Year CAGR</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="growth-label">Revenue</td>
+                  <td class="{{ 'pos' if growth.sales_growth_1y and growth.sales_growth_1y > 0 else 'neg' }}">
+                    {{ growth_fmt(growth.sales_growth_1y) }}
+                  </td>
+                  <td class="{{ 'pos' if growth.sales_growth_3y and growth.sales_growth_3y > 0 else 'neg' }}">
+                    {{ growth_fmt(growth.sales_growth_3y) }}
+                  </td>
+                  <td class="{{ 'pos' if growth.sales_growth_5y and growth.sales_growth_5y > 0 else 'neg' }}">
+                    {{ growth_fmt(growth.sales_growth_5y) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="growth-label">Net Profit</td>
+                  <td class="{{ 'pos' if growth.profit_growth_1y and growth.profit_growth_1y > 0 else 'neg' }}">
+                    {{ growth_fmt(growth.profit_growth_1y) }}
+                  </td>
+                  <td class="{{ 'pos' if growth.profit_growth_3y and growth.profit_growth_3y > 0 else 'neg' }}">
+                    {{ growth_fmt(growth.profit_growth_3y) }}
+                  </td>
+                  <td class="{{ 'pos' if growth.profit_growth_5y and growth.profit_growth_5y > 0 else 'neg' }}">
+                    {{ growth_fmt(growth.profit_growth_5y) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- About Company -->
+        {% if insights and insights.about_company %}
+        <div class="siq-card insight-card">
+          <div class="card-title-row">
+            <h3 class="card-title"><i class="bi bi-building"></i> About the Company</h3>
+            <span class="ai-badge"><i class="bi bi-stars"></i> AI Generated</span>
+          </div>
+          <p class="insight-text">{{ insights.about_company }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Future Scope -->
+        {% if insights and insights.future_scope %}
+        <div class="siq-card insight-card insight-future">
+          <div class="card-title-row">
+            <h3 class="card-title"><i class="bi bi-graph-up-arrow"></i> Future Scope</h3>
+            <span class="ai-badge"><i class="bi bi-stars"></i> AI Generated</span>
+          </div>
+          <p class="insight-text">{{ insights.future_scope }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Risks -->
+        {% if insights and insights.risks %}
+        <div class="siq-card insight-card insight-risks">
+          <div class="card-title-row">
+            <h3 class="card-title"><i class="bi bi-exclamation-triangle"></i> Key Risks</h3>
+            <span class="ai-badge"><i class="bi bi-stars"></i> AI Generated</span>
+          </div>
+          <p class="insight-text">{{ insights.risks }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Investment Thesis -->
+        {% if insights and insights.investment_thesis %}
+        <div class="siq-card insight-card insight-thesis">
+          <div class="card-title-row">
+            <h3 class="card-title"><i class="bi bi-lightbulb"></i> Investment Thesis</h3>
+            <span class="ai-badge"><i class="bi bi-stars"></i> AI Generated</span>
+          </div>
+          <p class="insight-text">{{ insights.investment_thesis }}</p>
+        </div>
+        {% endif %}
+
+        <!-- No insights fallback -->
+        {% if not insights %}
+        <div class="siq-card insight-pending">
+          <div class="pending-icon"><i class="bi bi-hourglass-split"></i></div>
+          <h3>AI Insights Pending</h3>
+          <p>Run <code>python generate_insights.py {{ company.ticker }}</code> to generate insights for this stock.</p>
+        </div>
+        {% endif %}
+
+        <!-- Q&A Section -->
+        {% if qa_pairs %}
+        <div class="siq-card qa-card">
+          <div class="card-title-row">
+            <h3 class="card-title"><i class="bi bi-chat-square-text"></i> Investor Q&amp;A</h3>
+            <span class="qa-count">{{ qa_pairs | length }} questions</span>
+          </div>
+
+          {% set categories = qa_pairs | groupby('category') %}
+          {% for category, items in categories %}
+          <div class="qa-category">
+            <div class="qa-category-label">{{ category }}</div>
+            {% for qa in items %}
+            <div class="qa-item">
+              <button class="qa-question" data-bs-toggle="collapse" data-bs-target="#qa-{{ loop.index }}-{{ category | replace(' ', '') }}">
+                <span>{{ qa.question }}</span>
+                <i class="bi bi-chevron-down qa-chevron"></i>
+              </button>
+              <div class="collapse qa-answer" id="qa-{{ loop.index }}-{{ category | replace(' ', '') }}">
+                <p>{{ qa.answer }}</p>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Animate metric cards on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.siq-card').forEach(card => observer.observe(card));
+</script>
+{% endblock %}

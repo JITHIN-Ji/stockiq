@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}StockIQ — Instant Investor Intelligence for Indian Stocks{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero ──────────────────────────────────────────────────────────────── -->
+<section class="hero-section">
+  <div class="hero-bg-grid"></div>
+  <div class="container-xl">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="pulse-dot"></span>
+        10 Indian stocks covered
+      </div>
+      <h1 class="hero-title">
+        Understand any stock<br>
+        <em>in 60 seconds.</em>
+      </h1>
+      <p class="hero-subtitle">
+        AI-powered investor intelligence. Classification, insights, risks, and Q&amp;A —
+        all pre-generated. No waiting. No guesswork.
+      </p>
+
+      <form class="hero-search-form" action="{{ url_for('main.search') }}" method="GET">
+        <div class="hero-search-wrap">
+          <i class="bi bi-search hero-search-icon"></i>
+          <input
+            type="text"
+            name="q"
+            id="heroSearchInput"
+            placeholder="Try 'TCS', 'Reliance', 'Wipro'…"
+            autocomplete="off"
+            class="hero-search-input"
+          >
+          <button type="submit" class="hero-search-btn">Analyse →</button>
+          <div class="hero-autocomplete" id="heroAutocomplete"></div>
+        </div>
+      </form>
+
+      {% if no_results %}
+      <div class="no-results-toast">
+        <i class="bi bi-exclamation-circle"></i>
+        No results for "<strong>{{ search_query }}</strong>". Try one of the stocks below.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<!-- ── Popular Stocks ─────────────────────────────────────────────────────── -->
+<section class="popular-section">
+  <div class="container-xl">
+    <div class="section-header">
+      <h2 class="section-title">Popular Stocks</h2>
+      <p class="section-subtitle">Click any card for a full analysis</p>
+    </div>
+
+    <div class="stock-grid">
+      {% for stock in popular_stocks %}
+      <a href="{{ url_for('main.stock_detail', ticker=stock.ticker) }}" class="stock-card">
+        <div class="stock-card-header">
+          <div class="stock-avatar">{{ stock.ticker[:2] }}</div>
+          <div class="stock-card-meta">
+            <div class="stock-ticker">{{ stock.ticker }}</div>
+            <div class="stock-name">{{ stock.name }}</div>
+          </div>
+        </div>
+        <div class="stock-card-metrics">
+          <div class="mini-metric">
+            <span class="mini-label">Price</span>
+            <span class="mini-value">₹{{ "%.0f"|format(stock.current_price) if stock.current_price else 'N/A' }}</span>
+          </div>
+          <div class="mini-metric">
+            <span class="mini-label">P/E</span>
+            <span class="mini-value">{{ "%.1f"|format(stock.pe_ratio) if stock.pe_ratio else 'N/A' }}</span>
+          </div>
+          <div class="mini-metric">
+            <span class="mini-label">Div Yield</span>
+            <span class="mini-value">{{ "%.1f"|format(stock.dividend_yield) ~ "%" if stock.dividend_yield else '—' }}</span>
+          </div>
+        </div>
+        <div class="stock-card-sector">{{ stock.sector }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── How It Works ───────────────────────────────────────────────────────── -->
+<section class="how-section">
+  <div class="container-xl">
+    <div class="section-header">
+      <h2 class="section-title">How StockIQ works</h2>
+    </div>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-number">01</div>
+        <h3>Search a stock</h3>
+        <p>Type the company name or ticker. Instant suggestions appear.</p>
+      </div>
+      <div class="how-arrow"><i class="bi bi-arrow-right"></i></div>
+      <div class="how-step">
+        <div class="how-number">02</div>
+        <h3>See the classification</h3>
+        <p>Every stock is classified into Peter Lynch's 6 buckets with a confidence score.</p>
+      </div>
+      <div class="how-arrow"><i class="bi bi-arrow-right"></i></div>
+      <div class="how-step">
+        <div class="how-number">03</div>
+        <h3>Read the insights</h3>
+        <p>AI-generated narratives cover the business, future scope, risks, and investment thesis.</p>
+      </div>
+      <div class="how-arrow"><i class="bi bi-arrow-right"></i></div>
+      <div class="how-step">
+        <div class="how-number">04</div>
+        <h3>Get your answers</h3>
+        <p>12 key investor questions answered instantly from structured financial data.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
