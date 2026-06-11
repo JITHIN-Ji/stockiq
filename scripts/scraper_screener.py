@@ -7,7 +7,7 @@ import yfinance as yf
 from bs4 import BeautifulSoup
 
 
-# ── Ticker mappings ────────────────────────────────────────────────────────────
+
 TICKERS = [
     "TCS", "INFY", "WIPRO", "PERSISTENT",
     "SAIL", "ADANIPOWER", "ONGC", "VEDL",
@@ -42,7 +42,7 @@ HEADERS = {
 }
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _parse_num(text: str):
     if not text:
@@ -78,7 +78,6 @@ def _cagr(start, end, years) -> float | None:
         return None
 
 
-# ── yfinance data ──────────────────────────────────────────────────────────────
 
 def _yf_data(ticker: str) -> dict:
     """
@@ -114,7 +113,7 @@ def _yf_data(ticker: str) -> dict:
     # Face value — yfinance doesn't have it; will get from Screener
     face_value = None
 
-    # ── Financials for CAGR ────────────────────────────────────────────────────
+    
     try:
         fin = t.financials          # annual, columns = dates descending
         # Rows we need
@@ -142,10 +141,7 @@ def _yf_data(ticker: str) -> dict:
         revenue_ttm    = _to_crore(rev_vals[-1])    if rev_vals    else None
         net_profit_ttm = _to_crore(profit_vals[-1]) if profit_vals else None
 
-        # Growth CAGRs
-        # 1Y = latest vs 1-year-ago
-        # 3Y = latest vs 3-years-ago
-        # 5Y = use 3Y as fallback if < 5 years available
+        
         def _growth(vals, years):
             if len(vals) > years:
                 return _cagr(vals[-(years+1)], vals[-1], years)
@@ -166,7 +162,7 @@ def _yf_data(ticker: str) -> dict:
         profit_1y = profit_3y = profit_5y = None
 
     
-    # ── Quality metrics from yfinance ──────────────────────────────────────────
+   
     profit_margin = info.get("profitMargins")
     if profit_margin:
         profit_margin = round(profit_margin * 100, 2)
@@ -234,7 +230,7 @@ def _yf_data(ticker: str) -> dict:
         "growth": {
             "sales_growth_1y":  sales_1y,
             "sales_growth_3y":  sales_3y,
-            "sales_growth_5y":  sales_5y,
+            "sales_growth_5y": sales_5y,
             "profit_growth_1y": profit_1y,
             "profit_growth_3y": profit_3y,
             "profit_growth_5y": profit_5y,
@@ -242,20 +238,20 @@ def _yf_data(ticker: str) -> dict:
             "net_profit_ttm":   net_profit_ttm,
         },
         "quality": {
-        "roe":               roe,
-        "roce":              None,   # Screener
-        "roa":               roa,
-        "debt_to_equity":    debt_to_equity,
-        "interest_coverage": None,   # skip
-        "current_ratio":     current_ratio,
-        "cash_flow":         cash_flow,
-        "profit_margin":     profit_margin,
-        "asset_turnover":    asset_turnover,
-    },
+            "roe":               roe,
+            "roce":              None,   # Screener
+            "roa":               roa,
+            "debt_to_equity":    debt_to_equity,
+            "interest_coverage": None,   # updated in screener data
+            "current_ratio":     current_ratio,
+            "cash_flow":         cash_flow,
+            "profit_margin":     profit_margin,
+            "asset_turnover":    asset_turnover,
+        },
     }
 
 
-# ── Screener.in data ───────────────────────────────────────────────────────────
+
 
 def _get_screener_soup(ticker: str) -> BeautifulSoup | None:
     slug = SCREENER_SLUG.get(ticker, ticker)
@@ -335,14 +331,14 @@ def _screener_data(ticker: str) -> dict:
         return {"ratios": {}, "shareholding": {}}
 
     ratios = {
-        "face_value": _screener_ratio(soup, "Face Value"),
-        "roce":       _screener_ratio(soup, "ROCE"),
+        "face_value":        _screener_ratio(soup, "Face Value"),
+        "roce":              _screener_ratio(soup, "ROCE"),
+        "interest_coverage": _screener_ratio(soup, "Interest Coverage"),
     }
     shareholding = _screener_shareholding(soup)
     return {"ratios": ratios, "shareholding": shareholding}
 
 
-# ── Main scrape function ───────────────────────────────────────────────────────
 
 def scrape_ticker(ticker: str) -> dict | None:
     """
@@ -367,8 +363,8 @@ def scrape_ticker(ticker: str) -> dict | None:
     ratios = sc_result["ratios"]
 
     yf_result["company"]["face_value"] = ratios.get("face_value")
-    yf_result["quality"]["roce"]       = ratios.get("roce")
-    
+    yf_result["quality"]["roce"]              = ratios.get("roce")
+    yf_result["quality"]["interest_coverage"] = ratios.get("interest_coverage")
 
     yf_result["company"]["ticker"] = ticker
     yf_result["shareholding"]      = sc_result["shareholding"]
