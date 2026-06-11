@@ -65,6 +65,10 @@
     font-size: 0.78rem;
     color: rgba(255,255,255,.35);
     font-family: var(--font-mono);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
 
   .admin-token-badge .dot {
@@ -79,6 +83,7 @@
   .admin-body {
     padding: 32px 0 80px;
     background: var(--mist);
+    overflow-x: hidden;
   }
 
   .admin-layout {
@@ -144,9 +149,11 @@
   /* ── Stats Row ────────────────────────────────────────────────────────────── */
   .stats-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
     margin-bottom: 20px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .stat-tile {
@@ -154,6 +161,8 @@
     border-radius: var(--radius);
     padding: 14px 16px;
     text-align: center;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .stat-value {
@@ -359,6 +368,7 @@
     resize: vertical;
     outline: none;
     transition: border-color 0.2s;
+    box-sizing: border-box;
   }
 
   .prompt-editor:focus {
@@ -406,6 +416,8 @@
     background: white;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .form-input:focus {
@@ -475,7 +487,12 @@
     color: white;
   }
 
-  .pipeline-step-label { flex: 1; font-weight: 500; }
+  .pipeline-step-label {
+    flex: 1;
+    font-weight: 500;
+    font-size: 0.82rem;
+    white-space: normal;
+  }
 
   .pipeline-step-status {
     font-family: var(--font-mono);
@@ -701,17 +718,77 @@
   }
 
   /* ── Responsive ───────────────────────────────────────────────────────────── */
-  @media (max-width: 1024px) {
+  @media (max-width: 1100px) {
     .admin-layout { grid-template-columns: 1fr; }
-    .admin-sidebar { position: static; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
-    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .admin-sidebar {
+      position: static;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+  }
+
+  @media (max-width: 768px) {
+    .admin-body { padding: 16px 0 60px; }
+    .container-xl { padding-left: 12px; padding-right: 12px; box-sizing: border-box; }
+    .admin-layout { gap: 16px; }
+    .admin-card-header { flex-wrap: wrap; }
+    #tableSearch { width: 100% !important; }
+    .admin-table td { white-space: normal; }
+    .admin-table {
+      table-layout: fixed;
+      width: 100%;
+    }
+    .admin-table th:nth-child(1), .admin-table td:nth-child(1) { width: 70px; }
+    .admin-table th:nth-child(2), .admin-table td:nth-child(2) { width: 110px; }
+    .admin-table th:nth-child(3), .admin-table td:nth-child(3) { display: none; }
+    .admin-table th:nth-child(4), .admin-table td:nth-child(4) { width: 80px; }
+    .admin-table th:nth-child(5), .admin-table td:nth-child(5) { width: 60px; }
+    .admin-table th:nth-child(6), .admin-table td:nth-child(6) { width: 100px; }
+    .tbl-name { max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .row-actions { flex-direction: column; gap: 3px; }
+    .row-btn { font-size: 0.68rem; padding: 3px 6px; }
+    .admin-table td, .admin-table th { padding: 10px 8px; }
   }
 
   @media (max-width: 640px) {
-    .stats-row { grid-template-columns: repeat(2, 1fr); }
     .admin-card { padding: 16px; }
-    .row-actions { flex-direction: column; gap: 4px; }
-    .admin-table td, .admin-table th { padding: 10px 8px; }
+    .prompt-footer { flex-direction: column; align-items: flex-start; }
+    .prompt-actions { width: 100%; }
+    .prompt-actions .btn-ghost,
+    .prompt-actions .btn-primary { flex: 1; justify-content: center; }
+    .bulk-bar-actions { width: 100%; }
+  }
+
+  @media (max-width: 480px) {
+    .admin-hero-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .admin-token-badge { width: 100%; }
+    .admin-title { font-size: 1.1rem; }
+    .form-input { font-size: 0.85rem; }
+    .btn-gold { font-size: 0.82rem; }
+    .pipeline-step { padding: 8px 10px; gap: 8px; }
+    .pipeline-step-status { font-size: 0.68rem; }
+    .insight-modal-overlay { padding: 12px; }
+    .modal-header { padding: 14px 16px; }
+    .modal-body { padding: 16px; }
+    .modal-insight-text { font-size: 0.82rem; padding: 10px 12px; }
+    #adminToast {
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      min-width: unset;
+      max-width: unset;
+    }
+    .bulk-bar-actions .btn-ghost { flex: 1; justify-content: center; }
+  }
+
+  @media (max-width: 400px) {
+    .prompt-tabs { flex-wrap: wrap; }
+    .prompt-tab { flex: none; width: calc(50% - 4px); }
+  }
+
+  @media (max-width: 360px) {
+    .stat-value { font-size: 1.2rem; }
+    .stat-label { font-size: 0.65rem; }
   }
 </style>
 {% endblock %}
