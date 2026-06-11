@@ -2,7 +2,7 @@
 StockIQ Main Routes
 Handles frontend page rendering.
 """
-
+import os
 from flask import Blueprint, render_template, request, redirect, url_for
 from app.models import Company, GrowthMetrics, QualityMetrics, Shareholding, Classification, Insights
 from app.services.question_engine import generate_qa
@@ -69,4 +69,25 @@ def search():
         popular_stocks=popular,
         search_query=q,
         no_results=True,
+    )
+
+
+@main_bp.route("/admin")
+def admin_page():
+    token = request.args.get("token", "")
+    if token != os.getenv("ADMIN_TOKEN", "stockiq-admin-secret"):
+        return "Unauthorized", 401
+
+    companies = Company.query.all()
+    for c in companies:
+        c.has_growth         = GrowthMetrics.query.filter_by(company_id=c.id).count() > 0
+        c.has_quality        = QualityMetrics.query.filter_by(company_id=c.id).count() > 0
+        c.has_shareholding   = Shareholding.query.filter_by(company_id=c.id).count() > 0
+        c.has_classification = Classification.query.filter_by(company_id=c.id).count() > 0
+        c.has_insights       = Insights.query.filter_by(company_id=c.id).count() > 0
+        c.classification     = Classification.query.filter_by(company_id=c.id).first()
+
+    return render_template("admin.html",
+        companies=companies,
+        admin_token=token,
     )

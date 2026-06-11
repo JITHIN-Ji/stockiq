@@ -24,10 +24,11 @@ def create_app(config_name="default"):
         "DATABASE_URL", "sqlite:///stockiq.db"
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    # FIX 1: removed sslmode — that's PostgreSQL only, crashes SQLite locally
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_recycle": 300,
         "pool_pre_ping": True,
-        "connect_args": {"sslmode": "require"},
     }
 
     # ── Extensions ─────────────────────────────────────────────────────────────
@@ -45,6 +46,8 @@ def create_app(config_name="default"):
 
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
-    app.register_blueprint(admin_bp, url_prefix="/admin")
+
+    
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
     return app

@@ -4,10 +4,10 @@ Uses Anthropic Claude to generate narrative insights.
 ONLY called during admin data ingestion — never during page loads.
 """
 
-
 import os
 import json
 from datetime import datetime
+from pathlib import Path
 
 
 def _call_anthropic(prompt: str, max_tokens: int = 1024) -> str:
@@ -24,7 +24,8 @@ def _call_anthropic(prompt: str, max_tokens: int = 1024) -> str:
         )
     )
     return response.text.strip()
-    
+
+
 def _build_company_context(company, growth, quality, shareholding, classification) -> str:
     """Build a compact financial context string for LLM prompts."""
     lines = [
@@ -73,57 +74,66 @@ def generate_insights(company_id: int) -> bool:
     if not company:
         return False
 
-    growth = GrowthMetrics.query.filter_by(company_id=company_id).first()
-    quality = QualityMetrics.query.filter_by(company_id=company_id).first()
-    shareholding = Shareholding.query.filter_by(company_id=company_id).first()
+    growth         = GrowthMetrics.query.filter_by(company_id=company_id).first()
+    quality        = QualityMetrics.query.filter_by(company_id=company_id).first()
+    shareholding   = Shareholding.query.filter_by(company_id=company_id).first()
     classification = Classification.query.filter_by(company_id=company_id).first()
 
     ctx = _build_company_context(company, growth, quality, shareholding, classification)
+    bucket = classification.primary_bucket if classification else "Unknown"
+
+    
+    prompts_file = Path("data/prompts.json")
+    try:
+        prompts = json.loads(prompts_file.read_text()) if prompts_file.exists() else {}
+    except Exception:
+        prompts = {}
+
+    def _render(key, fallback):
+        """Use saved prompt if exists, else use fallback. Fill placeholders."""
+        tpl = prompts.get(key) or fallback
+        return tpl.format(
+            company_name=company.name,
+            sector=company.sector or "",
+            bucket=bucket,
+            financial_context=ctx,
+        )
 
     # ── About Company ──────────────────────────────────────────────────────────
-    about = _call_anthropic(
-        f"""You are a financial analyst writing for retail investors in India.
-Given the following data about {company.name}, write a concise 'About the Company' section in 100–150 words.
-Focus on: what the company does, its market position, and key business segments.
-Write in plain English. No bullet points. No markdown. No jargon.
-
-{ctx}""",
-        max_tokens=1024,
-    )
+    about = _call_anthropic(_render("about",
+        "You are a financial analyst writing for retail investors in India.\n"
+        "Given the following data about {company_name}, write a concise 'About the Company' section in 100–150 words.\n"
+        "Focus on: what the company does, its market position, and key business segments.\n"
+        "Write in plain English. No bullet points. No markdown. No jargon.\n\n"
+        "{financial_context}"
+    ))
 
     # ── Future Scope ───────────────────────────────────────────────────────────
-    future = _call_anthropic(
-        f"""You are a financial analyst writing for retail investors in India.
-Given the following data about {company.name}, write a 'Future Scope' section in 100–150 words.
-Focus on: industry tailwinds, expansion opportunities, and growth levers.
-Write in plain English. No bullet points. No markdown. Be realistic.
-
-{ctx}""",
-        max_tokens=1024,
-    )
+    future = _call_anthropic(_render("future",
+        "You are a financial analyst writing for retail investors in India.\n"
+        "Given the following data about {company_name}, write a 'Future Scope' section in 100–150 words.\n"
+        "Focus on: industry tailwinds, expansion opportunities, and growth levers.\n"
+        "Write in plain English. No bullet points. No markdown. Be realistic.\n\n"
+        "{financial_context}"
+    ))
 
     # ── Risks ──────────────────────────────────────────────────────────────────
-    risks = _call_anthropic(
-        f"""You are a financial analyst writing for retail investors in India.
-Given the following data about {company.name}, write a 'Key Risks' section in 100–150 words.
-Focus on: debt risk, competition, sector headwinds, and company-specific concerns.
-Write in plain English. No bullet points. No markdown. Be honest.
-
-{ctx}""",
-        max_tokens=1024,
-    )
+    risks = _call_anthropic(_render("risks",
+        "You are a financial analyst writing for retail investors in India.\n"
+        "Given the following data about {company_name}, write a 'Key Risks' section in 100–150 words.\n"
+        "Focus on: debt risk, competition, sector headwinds, and company-specific concerns.\n"
+        "Write in plain English. No bullet points. No markdown. Be honest.\n\n"
+        "{financial_context}"
+    ))
 
     # ── Investment Thesis ──────────────────────────────────────────────────────
-    bucket = classification.primary_bucket if classification else "Unknown"
-    thesis = _call_anthropic(
-        f"""You are a financial analyst writing for retail investors in India.
-{company.name} has been classified as a '{bucket}' stock.
-Write a 100–150 word 'Investment Thesis' explaining why this classification fits.
-Relate the thesis to actual metrics. Write in plain English. No bullet points. No markdown.
-
-{ctx}""",
-        max_tokens=1024,
-    )
+    thesis = _call_anthropic(_render("thesis",
+        "You are a financial analyst writing for retail investors in India.\n"
+        "{company_name} has been classified as a '{bucket}' stock.\n"
+        "Write a 100–150 word 'Investment Thesis' explaining why this classification fits.\n"
+        "Relate the thesis to actual metrics. Write in plain English. No bullet points. No markdown.\n\n"
+        "{financial_context}"
+    ))
 
     # ── Save ───────────────────────────────────────────────────────────────────
     insight = Insights.query.filter_by(company_id=company_id).first()
@@ -131,10 +141,10 @@ Relate the thesis to actual metrics. Write in plain English. No bullet points. N
         insight = Insights(company_id=company_id)
         db.session.add(insight)
 
-    insight.about_company = about
-    insight.future_scope = future
-    insight.risks = risks
+    insight.about_company     = about
+    insight.future_scope      = future
+    insight.risks             = risks
     insight.investment_thesis = thesis
-    insight.generated_at = datetime.utcnow()
+    insight.generated_at      = datetime.utcnow()
     db.session.commit()
     return True

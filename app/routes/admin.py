@@ -16,11 +16,166 @@ admin_bp = Blueprint("admin", __name__)
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "stockiq-admin-secret")
 
 
+import json
+from pathlib import Path
+
+
 def _require_token():
     token = request.headers.get("X-Admin-Token") or request.args.get("token")
     if token != ADMIN_TOKEN:
         return jsonify({"error": "Unauthorized"}), 401
     return None
+
+
+PROMPTS_FILE = Path("data/prompts.json")
+
+PROMPT_DEFAULTS = {
+    "about": """You are a financial analyst writing for retail investors in India.
+Given the following data about {company_name}, write a concise 'About the Company' section in 100–150 words.
+Focus on: what the company does, its market position, and key business segments.
+Write in plain English. No bullet points. No markdown. No jargon.
+
+{financial_context}""",
+
+    "future": """You are a financial analyst writing for retail investors in India.
+Given the following data about {company_name}, write a 'Future Scope' section in 100–150 words.
+Focus on: industry tailwinds, expansion opportunities, and growth levers.
+Write in plain English. No bullet points. No markdown. Be realistic.
+
+{financial_context}""",
+
+    "risks": """You are a financial analyst writing for retail investors in India.
+Given the following data about {company_name}, write a 'Key Risks' section in 100–150 words.
+Focus on: debt risk, competition, sector headwinds, and company-specific concerns.
+Write in plain English. No bullet points. No markdown. Be honest.
+
+{financial_context}""",
+
+    "thesis": """You are a financial analyst writing for retail investors in India.
+{company_name} has been classified as a '{bucket}' stock.
+Write a 100–150 word 'Investment Thesis' explaining why this classification fits.
+Relate the thesis to actual metrics. Write in plain English. No bullet points. No markdown.
+
+{financial_context}""",
+}
+
+
+def _load_prompts() -> dict:
+    """Read prompts.json. Fall back to defaults if missing/corrupt."""
+    if PROMPTS_FILE.exists():
+        try:
+            return json.loads(PROMPTS_FILE.read_text())
+        except Exception:
+            pass
+    return dict(PROMPT_DEFAULTS)
+
+
+def _save_prompts(data: dict):
+    """Write prompts dict to data/prompts.json."""
+    PROMPTS_FILE.parent.mkdir(exist_ok=True)
+    PROMPTS_FILE.write_text(json.dumps(data, indent=2))
+
+
+@admin_bp.route("/prompts", methods=["GET"])
+def get_prompts():
+    """Return current prompts (saved or defaults)."""
+    auth = _require_token()
+    if auth: return auth
+    return jsonify(_load_prompts())
+
+
+@admin_bp.route("/prompts", methods=["POST"])
+def save_prompts():
+    """Save edited prompts to data/prompts.json."""
+    auth = _require_token()
+    if auth: return auth
+    data = request.get_json() or {}
+    prompts = _load_prompts()
+    for k in PROMPT_DEFAULTS:        # only save known keys
+        if k in data:
+            prompts[k] = data[k]
+    _save_prompts(prompts)
+    return jsonify({"success": True})
+
+
+@admin_bp.route("/scrape", methods=["POST"])
+def scrape_single():
+    """Scrape one ticker → save to DB → return company_id."""
+    auth = _require_token()
+    if auth: return auth
+
+    data       = request.get_json() or {}
+    ticker     = (data.get("ticker") or "").strip().upper()
+    slug       = (data.get("screener_slug") or ticker).strip().upper()
+
+    if not ticker:
+        return jsonify({"success": False, "error": "ticker required"}), 400
+
+    # Block duplicate
+    existing = Company.query.filter_by(ticker=ticker).first()
+    if existing:
+        return jsonify({"success": False, "error": f"{ticker} already in DB"}), 409
+
+    try:
+        from scripts.scraper_screener import scrape_ticker, SCREENER_SLUG
+        SCREENER_SLUG[ticker] = slug          # inject custom slug if provided
+        scraped = scrape_ticker(ticker)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    if not scraped:
+        return jsonify({"success": False, "error": f"No data returned for {ticker}"}), 500
+
+    try:
+        from scripts.fetch_and_seed import save_company
+        company_id = save_company(db, scraped)
+        if not company_id:
+            return jsonify({"success": False, "error": "DB save failed"}), 500
+        return jsonify({"success": True, "company_id": company_id, "ticker": ticker})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@admin_bp.route("/company-insights/<int:company_id>", methods=["GET"])
+def get_company_insights(company_id):
+    """Return saved insights JSON for modal display."""
+    auth = _require_token()
+    if auth: return auth
+
+    ins = Insights.query.filter_by(company_id=company_id).first()
+    if not ins:
+        return jsonify({"error": "No insights found"}), 404
+
+    return jsonify({
+        "about_company":     ins.about_company,
+        "future_scope":      ins.future_scope,
+        "risks":             ins.risks,
+        "investment_thesis": ins.investment_thesis,
+    })
+
+
+@admin_bp.route("/company/<int:company_id>", methods=["DELETE"])
+def delete_company(company_id):
+    """Delete company + all related rows (cascade manual)."""
+    auth = _require_token()
+    if auth: return auth
+
+    company = Company.query.get(company_id)
+    if not company:
+        return jsonify({"error": "Not found"}), 404
+
+    # Delete child rows first — no FK cascade in SQLite by default
+    GrowthMetrics.query.filter_by(company_id=company_id).delete()
+    QualityMetrics.query.filter_by(company_id=company_id).delete()
+    Shareholding.query.filter_by(company_id=company_id).delete()
+    Classification.query.filter_by(company_id=company_id).delete()
+    Insights.query.filter_by(company_id=company_id).delete()
+    db.session.delete(company)
+    db.session.commit()
+
+    return jsonify({"success": True, "deleted": company_id})
+
+
 
 
 @admin_bp.route("/classify", methods=["POST"])

@@ -1,0 +1,1403 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — StockIQ Control Panel{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Admin Layout ─────────────────────────────────────────────────────────── */
+  .admin-hero {
+    background: var(--ink);
+    padding: 32px 0 28px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+
+  .admin-hero-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .admin-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .admin-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(212,168,83,.12);
+    border: 1px solid rgba(212,168,83,.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .admin-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px;
+  }
+
+  .admin-subtitle {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,.35);
+    margin: 0;
+    font-family: var(--font-mono);
+  }
+
+  .admin-token-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,.35);
+    font-family: var(--font-mono);
+  }
+
+  .admin-token-badge .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--emerald);
+    flex-shrink: 0;
+  }
+
+  /* ── Admin Body ───────────────────────────────────────────────────────────── */
+  .admin-body {
+    padding: 32px 0 80px;
+    background: var(--mist);
+  }
+
+  .admin-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .admin-main { display: flex; flex-direction: column; gap: 20px; }
+  .admin-sidebar { display: flex; flex-direction: column; gap: 20px; position: sticky; top: calc(var(--nav-h) + 16px); }
+
+  /* ── Section Eyebrow ──────────────────────────────────────────────────────── */
+  .section-eyebrow {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-eyebrow::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Admin Cards ──────────────────────────────────────────────────────────── */
+  .admin-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .admin-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 12px;
+  }
+
+  .admin-card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .admin-card-title .bi { color: var(--text-muted); }
+
+  /* ── Stats Row ────────────────────────────────────────────────────────────── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-tile {
+    background: var(--mist);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-value.gold { color: var(--gold); }
+  .stat-value.emerald { color: var(--emerald); }
+  .stat-value.crimson { color: var(--crimson); }
+
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  /* ── Companies Table ──────────────────────────────────────────────────────── */
+  .admin-table-wrap { overflow-x: auto; margin: 0 -4px; }
+
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .admin-table thead th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    font-weight: 700;
+    border-bottom: 2px solid var(--mist-2);
+    white-space: nowrap;
+  }
+
+  .admin-table tbody tr {
+    border-bottom: 1px solid var(--mist-2);
+    transition: background 0.1s;
+  }
+
+  .admin-table tbody tr:last-child { border-bottom: none; }
+  .admin-table tbody tr:hover { background: var(--mist); }
+
+  .admin-table td {
+    padding: 12px 12px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .tbl-ticker {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--gold);
+    background: var(--ink);
+    padding: 3px 8px;
+    border-radius: 5px;
+    display: inline-block;
+  }
+
+  .tbl-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tbl-bucket {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 100px;
+    display: inline-block;
+  }
+
+  .bucket-chip-fast-grower   { background: var(--emerald-light); color: var(--emerald); }
+  .bucket-chip-stalwart      { background: var(--sapphire-light); color: var(--sapphire); }
+  .bucket-chip-cyclical      { background: var(--amber-light);    color: var(--amber); }
+  .bucket-chip-turnaround    { background: var(--crimson-light);  color: var(--crimson); }
+  .bucket-chip-asset-play    { background: var(--violet-light);   color: var(--violet); }
+  .bucket-chip-slow-mover    { background: var(--mist-2);         color: var(--text-secondary); }
+
+  /* Data completeness dots */
+  .status-dots {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot.ok  { background: var(--emerald); }
+  .status-dot.missing { background: var(--mist-3); border: 1px solid var(--border-strong); }
+  .status-dot.warn { background: var(--amber); }
+
+  .dot-tooltip {
+    position: relative;
+    display: inline-flex;
+  }
+
+  /* Row actions */
+  .row-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .row-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-body);
+  }
+
+  .row-btn-classify {
+    background: var(--mist);
+    border-color: var(--border-strong);
+    color: var(--text-secondary);
+  }
+  .row-btn-classify:hover { background: var(--ink); color: white; border-color: var(--ink); }
+
+  .row-btn-insights {
+    background: var(--violet-light);
+    border-color: rgba(124,58,237,.15);
+    color: var(--violet);
+  }
+  .row-btn-insights:hover { background: var(--violet); color: white; border-color: var(--violet); }
+
+  .row-btn-view {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--border);
+  }
+  .row-btn-view:hover { color: var(--sapphire); border-color: var(--sapphire); }
+
+  /* Loading spinner on btn */
+  .btn-spinning .bi { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Prompt Editor Card ───────────────────────────────────────────────────── */
+  .prompt-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--mist);
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 16px;
+  }
+
+  .prompt-tab {
+    flex: 1;
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+    text-align: center;
+  }
+
+  .prompt-tab.active {
+    background: white;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .prompt-editor {
+    width: 100%;
+    min-height: 200px;
+    background: var(--ink);
+    color: rgba(255,255,255,.85);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .prompt-editor:focus {
+    border-color: rgba(212,168,83,.4);
+  }
+
+  .prompt-editor::placeholder { color: rgba(255,255,255,.2); }
+
+  .prompt-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .prompt-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .prompt-actions { display: flex; gap: 6px; }
+
+  /* ── Add Stock Card ───────────────────────────────────────────────────────── */
+  .add-stock-form { display: flex; flex-direction: column; gap: 14px; }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .form-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .form-input {
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    background: white;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-input:focus {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px rgba(13,15,20,.06);
+  }
+
+  .form-input::placeholder { color: var(--text-muted); }
+
+  .form-input.mono {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Pipeline steps preview */
+  .pipeline-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--mist-2);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    background: white;
+  }
+
+  .pipeline-step:last-child { border-bottom: none; }
+
+  .pipeline-step-num {
+    width: 22px;
+    height: 22px;
+    background: var(--mist-2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .pipeline-step.active .pipeline-step-num {
+    background: var(--gold);
+    color: var(--ink);
+  }
+
+  .pipeline-step.done .pipeline-step-num {
+    background: var(--emerald);
+    color: white;
+  }
+
+  .pipeline-step.error .pipeline-step-num {
+    background: var(--crimson);
+    color: white;
+  }
+
+  .pipeline-step-label { flex: 1; font-weight: 500; }
+
+  .pipeline-step-status {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .pipeline-step.active .pipeline-step-status { color: var(--gold); }
+  .pipeline-step.done .pipeline-step-status   { color: var(--emerald); }
+  .pipeline-step.error .pipeline-step-status  { color: var(--crimson); }
+
+  /* ── Buttons ──────────────────────────────────────────────────────────────── */
+  .btn-primary {
+    background: var(--ink);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  .btn-primary:hover { background: var(--ink-3); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+
+  .btn-ghost:hover { background: var(--mist); border-color: var(--ink); color: var(--text-primary); }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--ink);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-gold:hover { background: #c49030; }
+  .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Bulk Action Bar ──────────────────────────────────────────────────────── */
+  .bulk-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    background: var(--mist);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+
+  .bulk-bar-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .bulk-bar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Toast Notification ───────────────────────────────────────────────────── */
+  #adminToast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    min-width: 280px;
+    max-width: 380px;
+    background: var(--ink);
+    color: white;
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 0.85rem;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+  }
+
+  #adminToast.show {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  #adminToast .toast-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+  #adminToast .toast-text { flex: 1; line-height: 1.5; }
+  #adminToast.toast-success .toast-icon { color: #4ade80; }
+  #adminToast.toast-error   .toast-icon { color: #f87171; }
+  #adminToast.toast-info    .toast-icon { color: var(--gold); }
+
+  /* ── Insight Preview Modal ─────────────────────────────────────────────────── */
+  .insight-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(13,15,20,.7);
+    backdrop-filter: blur(4px);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .insight-modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .insight-modal {
+    background: white;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 680px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(16px);
+    transition: transform 0.25s;
+  }
+
+  .insight-modal-overlay.open .insight-modal { transform: translateY(0); }
+
+  .modal-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    z-index: 1;
+  }
+
+  .modal-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .modal-close {
+    width: 32px; height: 32px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .modal-close:hover { background: var(--mist); color: var(--text-primary); }
+
+  .modal-body { padding: 24px; }
+
+  .modal-insight-section {
+    margin-bottom: 24px;
+  }
+
+  .modal-insight-section:last-child { margin-bottom: 0; }
+
+  .modal-insight-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .modal-insight-text {
+    font-size: 0.9rem;
+    line-height: 1.75;
+    color: var(--text-secondary);
+    background: var(--mist);
+    padding: 14px 16px;
+    border-radius: var(--radius);
+  }
+
+  /* ── Responsive ───────────────────────────────────────────────────────────── */
+  @media (max-width: 1024px) {
+    .admin-layout { grid-template-columns: 1fr; }
+    .admin-sidebar { position: static; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 640px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .admin-card { padding: 16px; }
+    .row-actions { flex-direction: column; gap: 4px; }
+    .admin-table td, .admin-table th { padding: 10px 8px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Admin Hero ─────────────────────────────────────────────────────────── -->
+<section class="admin-hero">
+  <div class="container-xl">
+    <div class="admin-hero-inner">
+      <div class="admin-hero-left">
+        <div class="admin-icon"><i class="bi bi-sliders2"></i></div>
+        <div>
+          <h1 class="admin-title">Control Panel</h1>
+          <p class="admin-subtitle">Stock<em>IQ</em> Admin — data ingestion, classification &amp; insights</p>
+        </div>
+      </div>
+      <div class="admin-token-badge">
+        <span class="dot"></span>
+        Authenticated &nbsp;·&nbsp; {{ companies | length }} companies in DB
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Admin Body ─────────────────────────────────────────────────────────── -->
+<div class="admin-body">
+  <div class="container-xl">
+    <div class="admin-layout">
+
+      <!-- ── LEFT: Companies + Prompt ────────────────────────────────────── -->
+      <div class="admin-main">
+
+        <!-- Stats Row -->
+        <div class="stats-row">
+          <div class="stat-tile">
+            <div class="stat-value gold" id="statTotal">{{ companies | length }}</div>
+            <div class="stat-label">Total Stocks</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-value emerald" id="statInsights">{{ companies | selectattr('has_insights') | list | length }}</div>
+            <div class="stat-label">With Insights</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-value" id="statClassified">{{ companies | selectattr('has_classification') | list | length }}</div>
+            <div class="stat-label">Classified</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-value crimson" id="statMissing">{{ companies | rejectattr('has_insights') | list | length }}</div>
+            <div class="stat-label">Missing Insights</div>
+          </div>
+        </div>
+
+        <!-- Companies Table -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2 class="admin-card-title"><i class="bi bi-table"></i> All Companies</h2>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" class="form-input" id="tableSearch" placeholder="Filter by name or ticker…" style="padding:7px 12px;font-size:0.82rem;width:200px;">
+            </div>
+          </div>
+
+          <!-- Bulk Actions -->
+          <div class="bulk-bar">
+            <span class="bulk-bar-label"><i class="bi bi-lightning-fill" style="color:var(--gold)"></i> Bulk Actions</span>
+            <div class="bulk-bar-actions">
+              <button class="btn-ghost" id="btnClassifyAll" onclick="classifyAll()">
+                <i class="bi bi-diagram-3"></i> Classify All
+              </button>
+              <button class="btn-ghost" id="btnInsightsAll" onclick="generateInsightsAll()">
+                <i class="bi bi-stars"></i> Generate All Insights
+              </button>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="companiesTable">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Company</th>
+                  <th>Sector</th>
+                  <th>Bucket</th>
+                  <th>Data</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="companiesTableBody">
+                {% for c in companies %}
+                <tr id="row-{{ c.id }}" data-ticker="{{ c.ticker }}" data-name="{{ c.name | lower }}">
+                  <td><span class="tbl-ticker">{{ c.ticker }}</span></td>
+                  <td>
+                    <div class="tbl-name" title="{{ c.name }}">{{ c.name }}</div>
+                    <div style="font-size:0.72rem;color:var(--text-muted);font-family:var(--font-mono);">ID {{ c.id }}</div>
+                  </td>
+                  <td style="color:var(--text-secondary);font-size:0.82rem;">{{ c.sector or '—' }}</td>
+                  <td>
+                    {% if c.classification %}
+                      <span class="tbl-bucket bucket-chip-{{ c.classification.primary_bucket | lower | replace(' ', '-') }}">
+                        {{ c.classification.primary_bucket }}
+                      </span>
+                    {% else %}
+                      <span style="color:var(--text-muted);font-size:0.8rem;">—</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="status-dots" title="Growth / Quality / Shareholding / Classification / Insights">
+                      <span class="status-dot {{ 'ok' if c.has_growth else 'missing' }}" title="Growth"></span>
+                      <span class="status-dot {{ 'ok' if c.has_quality else 'missing' }}" title="Quality"></span>
+                      <span class="status-dot {{ 'ok' if c.has_shareholding else 'missing' }}" title="Shareholding"></span>
+                      <span class="status-dot {{ 'ok' if c.has_classification else 'missing' }}" title="Classification"></span>
+                      <span class="status-dot {{ 'ok' if c.has_insights else 'warn' }}" title="Insights"></span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="row-actions">
+                      <button class="row-btn row-btn-classify" id="classify-btn-{{ c.id }}" onclick="classifyOne({{ c.id }}, '{{ c.ticker }}')">
+                        <i class="bi bi-diagram-3"></i> Classify
+                      </button>
+                      <button class="row-btn row-btn-insights" id="insights-btn-{{ c.id }}" onclick="generateInsightsOne({{ c.id }}, '{{ c.ticker }}')">
+                        <i class="bi bi-stars"></i> Insights
+                      </button>
+                      {% if c.has_insights %}
+                      <button class="row-btn row-btn-view" onclick="showInsightModal({{ c.id }}, '{{ c.name }}')">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                      {% endif %}
+                      <a href="{{ url_for('main.stock_detail', ticker=c.ticker) }}" class="row-btn row-btn-view" target="_blank">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">
+                    No companies in database yet. Add one using the form →
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Prompt Editor -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2 class="admin-card-title"><i class="bi bi-code-square"></i> Insight Prompt Editor</h2>
+            <span style="font-size:0.75rem;color:var(--text-muted);">Changes apply to next insight generation run</span>
+          </div>
+
+          <!-- Tabs -->
+          <div class="prompt-tabs">
+            <button class="prompt-tab active" onclick="switchPromptTab(this, 'about')">About Company</button>
+            <button class="prompt-tab" onclick="switchPromptTab(this, 'future')">Future Scope</button>
+            <button class="prompt-tab" onclick="switchPromptTab(this, 'risks')">Key Risks</button>
+            <button class="prompt-tab" onclick="switchPromptTab(this, 'thesis')">Investment Thesis</button>
+          </div>
+
+          <!-- Editor area -->
+          <textarea class="prompt-editor" id="promptEditor" rows="10">{{ prompts.about if prompts else '' }}</textarea>
+
+          <!-- Available variables hint -->
+          <div style="margin-top:8px;padding:10px 14px;background:var(--mist);border-radius:8px;font-size:0.75rem;color:var(--text-muted);">
+            <strong style="color:var(--text-secondary);">Available in context:</strong>
+            <code style="font-family:var(--font-mono);font-size:0.72rem;background:white;padding:1px 5px;border-radius:4px;border:1px solid var(--border);margin-left:4px;">{company_name}</code>
+            <code style="font-family:var(--font-mono);font-size:0.72rem;background:white;padding:1px 5px;border-radius:4px;border:1px solid var(--border);margin-left:4px;">{sector}</code>
+            <code style="font-family:var(--font-mono);font-size:0.72rem;background:white;padding:1px 5px;border-radius:4px;border:1px solid var(--border);margin-left:4px;">{bucket}</code>
+            <code style="font-family:var(--font-mono);font-size:0.72rem;background:white;padding:1px 5px;border-radius:4px;border:1px solid var(--border);margin-left:4px;">{financial_context}</code>
+          </div>
+
+          <div class="prompt-footer">
+            <p class="prompt-hint"><i class="bi bi-info-circle"></i> Prompts are stored server-side and used for all future insight generation.</p>
+            <div class="prompt-actions">
+              <button class="btn-ghost" onclick="resetPrompt()"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+              <button class="btn-primary" onclick="savePrompt()"><i class="bi bi-floppy"></i> Save Prompt</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /admin-main -->
+
+      <!-- ── RIGHT SIDEBAR ────────────────────────────────────────────────── -->
+      <div class="admin-sidebar">
+
+        <!-- Add New Stock -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2 class="admin-card-title"><i class="bi bi-plus-circle"></i> Add New Stock</h2>
+          </div>
+
+          <div class="add-stock-form">
+            <div class="form-group">
+              <label class="form-label">NSE Ticker Symbol</label>
+              <input type="text" class="form-input mono" id="newTicker" placeholder="e.g. HDFC, BAJFINANCE"
+                     oninput="this.value = this.value.toUpperCase()" maxlength="20">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Screener.in Slug <span style="color:var(--text-muted);font-size:0.7rem;text-transform:none;letter-spacing:0;">(if different from ticker)</span></label>
+              <input type="text" class="form-input mono" id="newScreenerSlug" placeholder="e.g. ADANI-POWER (optional)">
+            </div>
+
+            <!-- Pipeline preview -->
+            <div>
+              <div class="section-eyebrow">Pipeline</div>
+              <div class="pipeline-steps" id="pipelineSteps">
+                <div class="pipeline-step" id="step-scrape">
+                  <div class="pipeline-step-num">1</div>
+                  <div class="pipeline-step-label">Scrape yfinance + Screener</div>
+                  <div class="pipeline-step-status" id="step-scrape-status">Waiting</div>
+                </div>
+                <div class="pipeline-step" id="step-save">
+                  <div class="pipeline-step-num">2</div>
+                  <div class="pipeline-step-label">Save to database</div>
+                  <div class="pipeline-step-status" id="step-save-status">Waiting</div>
+                </div>
+                <div class="pipeline-step" id="step-classify">
+                  <div class="pipeline-step-num">3</div>
+                  <div class="pipeline-step-label">Run classifier</div>
+                  <div class="pipeline-step-status" id="step-classify-status">Waiting</div>
+                </div>
+                <div class="pipeline-step" id="step-insights">
+                  <div class="pipeline-step-num">4</div>
+                  <div class="pipeline-step-label">Generate AI insights</div>
+                  <div class="pipeline-step-status" id="step-insights-status">Waiting</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-gold" id="btnAddStock" onclick="addStock()">
+              <i class="bi bi-plus-lg"></i> Run Pipeline
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2 class="admin-card-title"><i class="bi bi-lightning"></i> Quick Actions</h2>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn-ghost" style="justify-content:flex-start;" onclick="runSeed()">
+              <i class="bi bi-database-add"></i> Re-seed MVP stocks (10)
+            </button>
+            <button class="btn-ghost" style="justify-content:flex-start;" onclick="checkStatus()">
+              <i class="bi bi-activity"></i> Refresh data status
+            </button>
+            <a href="{{ url_for('api.get_all_stocks') }}" target="_blank" class="btn-ghost" style="justify-content:flex-start;">
+              <i class="bi bi-braces"></i> View API output
+            </a>
+            <a href="{{ url_for('main.index') }}" class="btn-ghost" style="justify-content:flex-start;">
+              <i class="bi bi-house"></i> Back to StockIQ
+            </a>
+          </div>
+        </div>
+
+        <!-- DB Status Legend -->
+        <div class="admin-card">
+          <div class="admin-card-header" style="margin-bottom:12px;">
+            <h2 class="admin-card-title"><i class="bi bi-circle-half"></i> Status Legend</h2>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            {% for label, cls, desc in [
+              ('Growth data', 'ok', 'Revenue & profit CAGRs present'),
+              ('Quality data', 'ok', 'ROE, ROCE, D/E ratios present'),
+              ('Shareholding', 'ok', 'Promoter/FII/DII data present'),
+              ('Classification', 'ok', 'Peter Lynch bucket assigned'),
+              ('Insights', 'warn', 'AI narrative sections pending'),
+              ('Missing', 'missing', 'Data not yet scraped')
+            ] %}
+            <div style="display:flex;align-items:center;gap:10px;font-size:0.82rem;">
+              <span class="status-dot {{ cls }}"></span>
+              <span style="font-weight:600;color:var(--text-primary);min-width:100px;">{{ label }}</span>
+              <span style="color:var(--text-muted);">{{ desc }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div><!-- /admin-sidebar -->
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Insight Preview Modal ──────────────────────────────────────────────── -->
+<div class="insight-modal-overlay" id="insightModal" onclick="closeModal(event)">
+  <div class="insight-modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalTitle"><i class="bi bi-stars" style="color:var(--violet)"></i> <span id="modalCompanyName"></span> — Insights</h3>
+      <button class="modal-close" onclick="closeInsightModal()"><i class="bi bi-x"></i></button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <div style="text-align:center;padding:40px;color:var(--text-muted);">
+        <i class="bi bi-hourglass-split" style="font-size:1.5rem;"></i>
+        <p style="margin-top:10px;">Loading insights…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────────────────────────── -->
+<div id="adminToast">
+  <i class="bi toast-icon" id="toastIcon"></i>
+  <span class="toast-text" id="toastText"></span>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  /* ─────────────────────────────────────────────────────────────────────────
+     StockIQ Admin JS
+     All API calls include X-Admin-Token header (read from meta or config)
+  ───────────────────────────────────────────────────────────────────────── */
+
+  const ADMIN_TOKEN = "{{ admin_token }}";
+
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Admin-Token": ADMIN_TOKEN,
+  };
+
+  /* ── Toast ─────────────────────────────────────────────────────────────── */
+  let toastTimer;
+  function showToast(message, type = "info") {
+    const toast = document.getElementById("adminToast");
+    const icon  = document.getElementById("toastIcon");
+    const text  = document.getElementById("toastText");
+
+    const icons = { success: "bi-check-circle-fill", error: "bi-exclamation-circle-fill", info: "bi-info-circle-fill" };
+    icon.className = "bi toast-icon " + (icons[type] || icons.info);
+    text.textContent = message;
+    toast.className = `show toast-${type}`;
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.className = ""; }, 4000);
+  }
+
+  /* ── Table search ──────────────────────────────────────────────────────── */
+  document.getElementById("tableSearch").addEventListener("input", function () {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll("#companiesTableBody tr").forEach(row => {
+      const ticker = row.dataset.ticker || "";
+      const name   = row.dataset.name   || "";
+      row.style.display = (ticker.includes(q) || name.includes(q)) ? "" : "none";
+    });
+  });
+
+  /* ── Classify one ──────────────────────────────────────────────────────── */
+  async function classifyOne(companyId, ticker) {
+    const btn = document.getElementById(`classify-btn-${companyId}`);
+    btn.classList.add("btn-spinning");
+    btn.disabled = true;
+
+    try {
+      const res  = await fetch("/api/admin/classify", {
+        method: "POST", headers,
+        body: JSON.stringify({ company_id: companyId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`${ticker} classified as "${data.bucket}"`, "success");
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        showToast(`Classification failed: ${data.error || "unknown error"}`, "error");
+      }
+    } catch (e) {
+      showToast("Network error. Try again.", "error");
+    } finally {
+      btn.classList.remove("btn-spinning");
+      btn.disabled = false;
+    }
+  }
+
+  /* ── Classify all ──────────────────────────────────────────────────────── */
+  async function classifyAll() {
+    const btn = document.getElementById("btnClassifyAll");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat btn-spinning"></i> Classifying…';
+
+    try {
+      const res  = await fetch("/api/admin/classify", { method: "POST", headers, body: JSON.stringify({}) });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Classified ${data.classified.length} companies`, "success");
+        setTimeout(() => location.reload(), 1200);
+      }
+    } catch (e) {
+      showToast("Classification failed.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-diagram-3"></i> Classify All';
+    }
+  }
+
+  /* ── Generate insights one ─────────────────────────────────────────────── */
+  async function generateInsightsOne(companyId, ticker) {
+    const btn = document.getElementById(`insights-btn-${companyId}`);
+    btn.classList.add("btn-spinning");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Running…';
+
+    try {
+      const res  = await fetch("/api/admin/generate-insights", {
+        method: "POST", headers,
+        body: JSON.stringify({ company_id: companyId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Insights generated for ${ticker}`, "success");
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        showToast(`Insight generation failed for ${ticker}`, "error");
+      }
+    } catch (e) {
+      showToast("Network error.", "error");
+    } finally {
+      btn.classList.remove("btn-spinning");
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-stars"></i> Insights';
+    }
+  }
+
+  /* ── Generate all insights ─────────────────────────────────────────────── */
+  async function generateInsightsAll() {
+    const btn = document.getElementById("btnInsightsAll");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat btn-spinning"></i> Generating…';
+    showToast("Generating insights for all companies. This may take a few minutes…", "info");
+
+    try {
+      const res  = await fetch("/api/admin/generate-insights", { method: "POST", headers, body: JSON.stringify({}) });
+      const data = await res.json();
+      if (data.success) {
+        const ok  = data.results.filter(r => r.success).length;
+        const fail = data.results.length - ok;
+        showToast(`Done — ${ok} succeeded${fail ? ", " + fail + " failed" : ""}`, ok > 0 ? "success" : "error");
+        setTimeout(() => location.reload(), 1500);
+      }
+    } catch (e) {
+      showToast("Insight generation failed.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-stars"></i> Generate All Insights';
+    }
+  }
+
+  /* ── Re-seed ───────────────────────────────────────────────────────────── */
+  async function runSeed() {
+    showToast("Re-seeding MVP stocks…", "info");
+    try {
+      const res  = await fetch("/api/admin/seed", { method: "POST", headers, body: JSON.stringify({}) });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Seed complete — created: ${data.created}, updated: ${data.updated}`, "success");
+        setTimeout(() => location.reload(), 1500);
+      }
+    } catch (e) {
+      showToast("Seed failed.", "error");
+    }
+  }
+
+  /* ── Refresh status ────────────────────────────────────────────────────── */
+  async function checkStatus() {
+    showToast("Refreshing status…", "info");
+    try {
+      const res  = await fetch(`/api/admin/status?token=${ADMIN_TOKEN}`);
+      const data = await res.json();
+      showToast(`Status refreshed — ${data.length} companies`, "success");
+      setTimeout(() => location.reload(), 800);
+    } catch (e) {
+      showToast("Status refresh failed.", "error");
+    }
+  }
+
+  /* ── Prompt editor ─────────────────────────────────────────────────────── */
+  const PROMPT_DEFAULTS = {
+    about: `You are a financial analyst writing for retail investors in India.
+Given the following data about {company_name}, write a concise 'About the Company' section in 100–150 words.
+Focus on: what the company does, its market position, and key business segments.
+Write in plain English. No bullet points. No markdown. No jargon.
+
+{financial_context}`,
+    future: `You are a financial analyst writing for retail investors in India.
+Given the following data about {company_name}, write a 'Future Scope' section in 100–150 words.
+Focus on: industry tailwinds, expansion opportunities, and growth levers.
+Write in plain English. No bullet points. No markdown. Be realistic.
+
+{financial_context}`,
+    risks: `You are a financial analyst writing for retail investors in India.
+Given the following data about {company_name}, write a 'Key Risks' section in 100–150 words.
+Focus on: debt risk, competition, sector headwinds, and company-specific concerns.
+Write in plain English. No bullet points. No markdown. Be honest.
+
+{financial_context}`,
+    thesis: `You are a financial analyst writing for retail investors in India.
+{company_name} has been classified as a '{bucket}' stock.
+Write a 100–150 word 'Investment Thesis' explaining why this classification fits.
+Relate the thesis to actual metrics. Write in plain English. No bullet points. No markdown.
+
+{financial_context}`,
+  };
+
+  let currentPromptKey = "about";
+  const savedPrompts = { ...PROMPT_DEFAULTS };
+
+  // Load from server on init
+  (async function loadPrompts() {
+    try {
+      const res = await fetch(`/api/admin/prompts?token=${ADMIN_TOKEN}`);
+      if (res.ok) {
+        const data = await res.json();
+        Object.assign(savedPrompts, data);
+        document.getElementById("promptEditor").value = savedPrompts[currentPromptKey] || PROMPT_DEFAULTS[currentPromptKey];
+      } else {
+        document.getElementById("promptEditor").value = PROMPT_DEFAULTS[currentPromptKey];
+      }
+    } catch {
+      document.getElementById("promptEditor").value = PROMPT_DEFAULTS[currentPromptKey];
+    }
+  })();
+
+  function switchPromptTab(btn, key) {
+    // Save current
+    savedPrompts[currentPromptKey] = document.getElementById("promptEditor").value;
+    // Switch
+    currentPromptKey = key;
+    document.querySelectorAll(".prompt-tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("promptEditor").value = savedPrompts[key] || PROMPT_DEFAULTS[key];
+  }
+
+  function resetPrompt() {
+    document.getElementById("promptEditor").value = PROMPT_DEFAULTS[currentPromptKey];
+    showToast("Prompt reset to default.", "info");
+  }
+
+  async function savePrompt() {
+    savedPrompts[currentPromptKey] = document.getElementById("promptEditor").value;
+    try {
+      const res  = await fetch("/api/admin/prompts", {
+        method: "POST", headers,
+        body: JSON.stringify(savedPrompts),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("All prompts saved successfully.", "success");
+      } else {
+        showToast("Failed to save prompts.", "error");
+      }
+    } catch (e) {
+      showToast("Network error saving prompts.", "error");
+    }
+  }
+
+  /* ── Add new stock pipeline ────────────────────────────────────────────── */
+  function setPipelineStep(stepId, state, statusText) {
+    const step   = document.getElementById(`step-${stepId}`);
+    const status = document.getElementById(`step-${stepId}-status`);
+    step.className   = `pipeline-step ${state}`;
+    status.textContent = statusText;
+  }
+
+  function resetPipeline() {
+    ["scrape","save","classify","insights"].forEach(s => setPipelineStep(s, "", "Waiting"));
+  }
+
+  async function addStock() {
+    const ticker = document.getElementById("newTicker").value.trim().toUpperCase();
+    const slug   = document.getElementById("newScreenerSlug").value.trim() || ticker;
+
+    if (!ticker) {
+      showToast("Enter a ticker symbol first.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btnAddStock");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat btn-spinning"></i> Running…';
+    resetPipeline();
+
+    try {
+      // Step 1: Scrape
+      setPipelineStep("scrape", "active", "Scraping…");
+      const scrapeRes  = await fetch("/api/admin/scrape", {
+        method: "POST", headers,
+        body: JSON.stringify({ ticker, screener_slug: slug }),
+      });
+      const scrapeData = await scrapeRes.json();
+
+      if (!scrapeData.success) {
+        setPipelineStep("scrape", "error", "Failed");
+        showToast(`Scrape failed: ${scrapeData.error || "unknown"}`, "error");
+        return;
+      }
+      setPipelineStep("scrape", "done", "Done");
+
+      const company_id = scrapeData.company_id;
+
+      // Step 2: Save already done server-side in scrape endpoint
+      setPipelineStep("save", "done", "Saved");
+
+      // Step 3: Classify
+      setPipelineStep("classify", "active", "Running…");
+      const clfRes  = await fetch("/api/admin/classify", {
+        method: "POST", headers,
+        body: JSON.stringify({ company_id }),
+      });
+      const clfData = await clfRes.json();
+      if (clfData.success) {
+        setPipelineStep("classify", "done", clfData.bucket || "Done");
+      } else {
+        setPipelineStep("classify", "error", "Failed");
+      }
+
+      // Step 4: Insights
+      setPipelineStep("insights", "active", "Generating…");
+      const insRes  = await fetch("/api/admin/generate-insights", {
+        method: "POST", headers,
+        body: JSON.stringify({ company_id }),
+      });
+      const insData = await insRes.json();
+      if (insData.success) {
+        setPipelineStep("insights", "done", "Done ✓");
+        showToast(`${ticker} added and fully processed!`, "success");
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        setPipelineStep("insights", "error", "Failed");
+        showToast(`${ticker} saved but insight generation failed.`, "error");
+      }
+
+    } catch (e) {
+      showToast(`Pipeline error: ${e.message}`, "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-plus-lg"></i> Run Pipeline';
+    }
+  }
+
+  /* ── Insight modal ─────────────────────────────────────────────────────── */
+  async function showInsightModal(companyId, name) {
+    document.getElementById("modalCompanyName").textContent = name;
+    document.getElementById("insightModal").classList.add("open");
+    document.getElementById("modalBody").innerHTML = `
+      <div style="text-align:center;padding:40px;color:var(--text-muted);">
+        <i class="bi bi-arrow-repeat" style="font-size:1.5rem;animation:spin 0.8s linear infinite;display:inline-block;"></i>
+        <p style="margin-top:10px;">Loading insights…</p>
+      </div>`;
+
+    try {
+      const res  = await fetch(`/api/admin/company-insights/${companyId}?token=${ADMIN_TOKEN}`);
+      const data = await res.json();
+
+      const sections = [
+        { label: "About the Company",  key: "about_company"     },
+        { label: "Future Scope",        key: "future_scope"      },
+        { label: "Key Risks",           key: "risks"             },
+        { label: "Investment Thesis",   key: "investment_thesis" },
+      ];
+
+      let html = "";
+      sections.forEach(s => {
+        if (data[s.key]) {
+          html += `<div class="modal-insight-section">
+            <div class="modal-insight-label">${s.label}</div>
+            <div class="modal-insight-text">${data[s.key]}</div>
+          </div>`;
+        }
+      });
+
+      document.getElementById("modalBody").innerHTML = html || "<p style='color:var(--text-muted)'>No insights found.</p>";
+    } catch (e) {
+      document.getElementById("modalBody").innerHTML = "<p style='color:var(--crimson)'>Failed to load insights.</p>";
+    }
+  }
+
+  function closeInsightModal() {
+    document.getElementById("insightModal").classList.remove("open");
+  }
+
+  function closeModal(e) {
+    if (e.target.id === "insightModal") closeInsightModal();
+  }
+</script>
+{% endblock %}

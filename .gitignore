@@ -26,3 +26,6 @@ __pycache__/
 .DS_Store
 instance/
 migrations/versions/
+
+# Runtime data files
+data/prompts.json
