@@ -1018,6 +1018,11 @@
                   <div class="pipeline-step-label">Generate AI insights</div>
                   <div class="pipeline-step-status" id="step-insights-status">Waiting</div>
                 </div>
+                <div class="pipeline-step" id="step-canvas">
+                  <div class="pipeline-step-num">5</div>
+                  <div class="pipeline-step-label">Generate business canvas</div>
+                  <div class="pipeline-step-status" id="step-canvas-status">Waiting</div>
+                </div>
               </div>
             </div>
 
@@ -1357,7 +1362,7 @@ Relate the thesis to actual metrics. Write in plain English. No bullet points. N
   }
 
   function resetPipeline() {
-    ["scrape","save","classify","insights"].forEach(s => setPipelineStep(s, "", "Waiting"));
+    ["scrape","save","classify","insights","canvas"].forEach(s => setPipelineStep(s, "", "Waiting"));
   }
 
   async function addStock() {
@@ -1416,13 +1421,26 @@ Relate the thesis to actual metrics. Write in plain English. No bullet points. N
       });
       const insData = await insRes.json();
       if (insData.success) {
-        setPipelineStep("insights", "done", "Done ✓");
-        showToast(`${ticker} added and fully processed!`, "success");
-        setTimeout(() => location.reload(), 1500);
+        setPipelineStep("insights", "done", "Done");
       } else {
         setPipelineStep("insights", "error", "Failed");
-        showToast(`${ticker} saved but insight generation failed.`, "error");
       }
+
+      // Step 5: Business Canvas
+      setPipelineStep("canvas", "active", "Generating…");
+      const canvasRes  = await fetch("/api/admin/generate-canvas", {
+        method: "POST", headers,
+        body: JSON.stringify({ company_id }),
+      });
+      const canvasData = await canvasRes.json();
+      if (canvasData.success) {
+        setPipelineStep("canvas", "done", "Done");
+        showToast(`${ticker} added and fully processed!`, "success");
+      } else {
+        setPipelineStep("canvas", "error", "Failed");
+        showToast(`${ticker} processed but canvas generation failed.`, "error");
+      }
+      setTimeout(() => location.reload(), 1500);
 
     } catch (e) {
       showToast(`Pipeline error: ${e.message}`, "error");

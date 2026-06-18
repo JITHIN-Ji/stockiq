@@ -4,7 +4,7 @@ Handles frontend page rendering.
 """
 import os
 from flask import Blueprint, render_template, request, redirect, url_for
-from app.models import Company, GrowthMetrics, QualityMetrics, Shareholding, Classification, Insights
+from app.models import Company, GrowthMetrics, QualityMetrics, Shareholding, Classification, Insights, BusinessCanvas
 from app.services.question_engine import generate_qa
 
 main_bp = Blueprint("main", __name__)
@@ -27,6 +27,7 @@ def stock_detail(ticker):
     shareholding = Shareholding.query.filter_by(company_id=company.id).first()
     classification = Classification.query.filter_by(company_id=company.id).first()
     insights = Insights.query.filter_by(company_id=company.id).first()
+    canvas = BusinessCanvas.query.filter_by(company_id=company.id).first()
 
     qa_pairs = generate_qa(company, growth, quality, shareholding, classification)
 
@@ -38,6 +39,7 @@ def stock_detail(ticker):
         shareholding=shareholding,
         classification=classification,
         insights=insights,
+        canvas=canvas,
         qa_pairs=qa_pairs,
     )
 

@@ -1,6 +1,6 @@
 import os
 from app import create_app, db
-from app.models import Company, Insights
+from app.models import Company, Insights, BusinessCanvas
 
 
 def run_pipeline():
@@ -35,6 +35,15 @@ with app.app_context():
             for company in missing:
                 print(f"  {company.ticker}...", end=" ", flush=True)
                 ok = generate_insights(company.id)
+                print("✅" if ok else "❌")
+
+        from app.services.insight_generator import generate_business_canvas
+        missing_canvas = Company.query.outerjoin(BusinessCanvas).filter(BusinessCanvas.id.is_(None)).all()
+        if missing_canvas:
+            print(f"🧩 Generating business canvas for {len(missing_canvas)} companies...")
+            for company in missing_canvas:
+                print(f"  {company.ticker}...", end=" ", flush=True)
+                ok = generate_business_canvas(company.id)
                 print("✅" if ok else "❌")
 
 if __name__ == "__main__":

@@ -7,9 +7,9 @@ Protected by a simple token for MVP.
 import os
 from flask import Blueprint, jsonify, request
 from app import db
-from app.models import Company, GrowthMetrics, QualityMetrics, Shareholding, Classification, Insights
+from app.models import Company, GrowthMetrics, QualityMetrics, Shareholding, Classification, Insights, BusinessCanvas
 from app.services.classifier import classify_and_save
-from app.services.insight_generator import generate_insights
+from app.services.insight_generator import generate_insights, generate_business_canvas
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -170,6 +170,7 @@ def delete_company(company_id):
     Shareholding.query.filter_by(company_id=company_id).delete()
     Classification.query.filter_by(company_id=company_id).delete()
     Insights.query.filter_by(company_id=company_id).delete()
+    BusinessCanvas.query.filter_by(company_id=company_id).delete()
     db.session.delete(company)
     db.session.commit()
 
@@ -228,6 +229,29 @@ def run_insight_generation():
     return jsonify({"success": True, "results": results})
 
 
+@admin_bp.route("/generate-canvas", methods=["POST"])
+def run_canvas_generation():
+    """Generate Business Canvas for one or all companies."""
+    auth = _require_token()
+    if auth:
+        return auth
+
+    data = request.get_json() or {}
+    company_id = data.get("company_id")
+
+    if company_id:
+        ok = generate_business_canvas(company_id)
+        return jsonify({"success": ok, "company_id": company_id})
+
+    companies = Company.query.all()
+    results = []
+    for c in companies:
+        ok = generate_business_canvas(c.id)
+        results.append({"company_id": c.id, "name": c.name, "success": ok})
+
+    return jsonify({"success": True, "results": results})
+
+
 @admin_bp.route("/seed", methods=["POST"])
 def seed_database():
     """
@@ -269,5 +293,6 @@ def status():
             "has_shareholding": Shareholding.query.filter_by(company_id=c.id).count() > 0,
             "has_classification": Classification.query.filter_by(company_id=c.id).count() > 0,
             "has_insights": Insights.query.filter_by(company_id=c.id).count() > 0,
+            "has_canvas": BusinessCanvas.query.filter_by(company_id=c.id).count() > 0,
         })
     return jsonify(report)

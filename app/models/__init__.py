@@ -37,6 +37,7 @@ class Company(db.Model):
     shareholding = db.relationship("Shareholding", backref="company", uselist=False, cascade="all, delete-orphan")
     classification = db.relationship("Classification", backref="company", uselist=False, cascade="all, delete-orphan")
     insights = db.relationship("Insights", backref="company", uselist=False, cascade="all, delete-orphan")
+    business_canvas = db.relationship("BusinessCanvas", backref="company", uselist=False, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -199,5 +200,39 @@ class Insights(db.Model):
             "future_scope": self.future_scope,
             "risks": self.risks,
             "investment_thesis": self.investment_thesis,
+            "generated_at": self.generated_at.isoformat() if self.generated_at else None,
+        }
+
+
+class BusinessCanvas(db.Model):
+    """Pre-generated Business Model Canvas (9 boxes) for each company."""
+
+    __tablename__ = "business_canvas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), unique=True, nullable=False)
+
+    key_partners = db.Column(db.Text)
+    key_activities = db.Column(db.Text)
+    key_resources = db.Column(db.Text)
+    value_propositions = db.Column(db.Text)
+    customer_relationships = db.Column(db.Text)
+    channels = db.Column(db.Text)
+    customer_segments = db.Column(db.Text)
+    cost_structure = db.Column(db.Text)
+    revenue_streams = db.Column(db.Text)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "key_partners": self.key_partners,
+            "key_activities": self.key_activities,
+            "key_resources": self.key_resources,
+            "value_propositions": self.value_propositions,
+            "customer_relationships": self.customer_relationships,
+            "channels": self.channels,
+            "customer_segments": self.customer_segments,
+            "cost_structure": self.cost_structure,
+            "revenue_streams": self.revenue_streams,
             "generated_at": self.generated_at.isoformat() if self.generated_at else None,
         }

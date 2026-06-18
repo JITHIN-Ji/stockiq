@@ -6,6 +6,7 @@ ONLY called during admin data ingestion — never during page loads.
 
 import os
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -146,5 +147,94 @@ def generate_insights(company_id: int) -> bool:
     insight.risks             = risks
     insight.investment_thesis = thesis
     insight.generated_at      = datetime.utcnow()
+    db.session.commit()
+    return True
+
+
+
+def generate_business_canvas(company_id: int) -> bool:
+    """
+    Generate Business Model Canvas (9 boxes) describing how the COMPANY
+    operates — not how to invest in the stock. One Gemini call, JSON
+    response, parsed into 9 fields. Returns True on success.
+    """
+    from app import db
+    from app.models import Company, GrowthMetrics, QualityMetrics, Shareholding, Classification, BusinessCanvas
+
+    company = Company.query.get(company_id)
+    if not company:
+        return False
+
+    growth         = GrowthMetrics.query.filter_by(company_id=company_id).first()
+    quality        = QualityMetrics.query.filter_by(company_id=company_id).first()
+    shareholding   = Shareholding.query.filter_by(company_id=company_id).first()
+    classification = Classification.query.filter_by(company_id=company_id).first()
+
+    ctx = _build_company_context(company, growth, quality, shareholding, classification)
+
+    prompt = (
+        "You are a business analyst. Given the data below about "
+        f"{company.name} (sector: {company.sector or 'N/A'}), produce a "
+        "Business Model Canvas describing how the COMPANY operates "
+        "(not investment advice about its stock).\n\n"
+        "Return ONLY valid JSON. No markdown. No code fences. No preamble. "
+        "Exactly these 9 keys, each a string of 20-40 words, plain English:\n\n"
+        "1. KEY PARTNERS: Strategic companies/people the business works with. "
+        "Include: resources received, activities performed by partners, motivations for partnership, dependency level.\n\n"
+        "2. KEY ACTIVITIES: Specific tasks fundamental to operation. Include: activities to deliver value, "
+        "what sets company apart, how they differ from competitors, niche resources needed, cost optimization.\n\n"
+        "3. KEY RESOURCES: Assets necessary to operate and deliver value proposition. "
+        "Include: specific assets needed, resources for distribution/revenue/customer relationships, capital/human resource needs.\n\n"
+        "4. VALUE PROPOSITIONS: The primary offering and mission (most important element). "
+        "Include: mission/vision, what is offered to customers, problems solved, needs satisfied, differentiation.\n\n"
+        "5. CUSTOMER RELATIONSHIPS: Types of interactions with customers. "
+        "Include: importance of relationships, relationship type (dedicated vs self-serve), differences by segment, communication frequency, support level.\n\n"
+        "6. CHANNELS: Structures and methods to deliver product/value to customers. "
+        "Include: how channels deliver value, how to reach customer segments, integration/efficiency, effectiveness.\n\n"
+        "7. CUSTOMER SEGMENTS: Different types of customers managed. "
+        "Include: main focus, most important customers, characteristics/needs/preferences, different customer types, market focus (niche vs mass).\n\n"
+        "8. COST STRUCTURE: How company spends money on operations and key costs. "
+        "Include: major cost drivers, how activities/resources contribute to costs, relationship to revenue, economies of scale, fixed vs variable costs, cost optimization vs value focus.\n\n"
+        "9. REVENUE STREAMS: Sources of cash flows and how value generates money. "
+        "Include: multiple revenue methods, pricing strategy, payment channels, multiple payment forms (upfront, plans, financing).\n\n"
+        "{\n"
+        '  "key_partners": "...",\n'
+        '  "key_activities": "...",\n'
+        '  "key_resources": "...",\n'
+        '  "value_propositions": "...",\n'
+        '  "customer_relationships": "...",\n'
+        '  "channels": "...",\n'
+        '  "customer_segments": "...",\n'
+        '  "cost_structure": "...",\n'
+        '  "revenue_streams": "..."\n'
+        "}\n\n"
+        f"Company data:\n{ctx}"
+    )
+
+    raw = _call_anthropic(prompt, max_tokens=900)
+    cleaned = re.sub(r"^```json|```$", "", raw.strip(), flags=re.MULTILINE).strip()
+
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError:
+        return False
+
+    required = [
+        "key_partners", "key_activities", "key_resources", "value_propositions",
+        "customer_relationships", "channels", "customer_segments",
+        "cost_structure", "revenue_streams",
+    ]
+    if not all(k in data for k in required):
+        return False
+
+    canvas = BusinessCanvas.query.filter_by(company_id=company_id).first()
+    if not canvas:
+        canvas = BusinessCanvas(company_id=company_id)
+        db.session.add(canvas)
+
+    for k in required:
+        setattr(canvas, k, data[k])
+    canvas.generated_at = datetime.utcnow()
+
     db.session.commit()
     return True

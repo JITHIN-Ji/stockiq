@@ -992,8 +992,14 @@ em { font-family: var(--font-display); font-style: italic; }
 @media (max-width: 1024px) {
   .stock-layout {
     grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+  }
+  .stock-main {
+    order: -1;
   }
   .stock-sidebar {
+    order: 1;
     position: static;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1027,4 +1033,120 @@ em { font-family: var(--font-display); font-style: italic; }
 /* Force all cards visible if JS is off */
 @media (prefers-reduced-motion: reduce) {
   .siq-card { opacity: 1; transform: none; transition: none; }
+}
+
+
+
+/* ── Business Model Canvas Card ──────────────────────────────────────────── */
+.canvas-toggle-btn {
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.canvas-toggle-btn:hover { background: var(--ink); color: white; }
+
+.canvas-panel { margin-top: 4px; }
+
+/* Wide 2-row Business Model Canvas layout for a shorter, more rectangular visual */
+.bmc-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 10px;
+}
+
+.bmc-box {
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.bmc-box.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.bmc-box-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bmc-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.bmc-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.bmc-box p {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.bmc-partners      { grid-column: 1 / span 2; grid-row: 1; background: var(--sapphire-light); }
+.bmc-activities    { grid-column: 3;          grid-row: 1; background: var(--sapphire-light); }
+.bmc-resources     { grid-column: 4;          grid-row: 1; background: var(--sapphire-light); }
+.bmc-value         { grid-column: 1;          grid-row: 2; background: var(--gold-light); }
+.bmc-relationships { grid-column: 2;          grid-row: 2; background: var(--amber-light); }
+.bmc-channels      { grid-column: 3;          grid-row: 2; background: var(--amber-light); }
+.bmc-segments      { grid-column: 4;          grid-row: 2; background: var(--amber-light); }
+
+.bmc-icon { color: var(--sapphire); }
+.bmc-value .bmc-icon { color: var(--gold); background: rgba(212,168,83,0.15); }
+.bmc-relationships .bmc-icon,
+.bmc-channels .bmc-icon,
+.bmc-segments .bmc-icon { color: var(--amber); background: rgba(217,119,6,0.12); }
+
+/* Bottom strip: Cost Structure + Revenue Streams, side by side, full width */
+.bmc-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.bmc-bottom .bmc-box { background: var(--emerald-light); }
+.bmc-bottom .bmc-icon { color: var(--emerald); background: rgba(26,138,94,0.12); }
+
+@media (max-width: 900px) {
+  .bmc-grid { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+  .bmc-partners      { grid-column: 1 / span 2; grid-row: auto; }
+  .bmc-activities    { grid-column: 1;          grid-row: auto; }
+  .bmc-resources     { grid-column: 2;          grid-row: auto; }
+  .bmc-value         { grid-column: 1 / span 2; grid-row: auto; }
+  .bmc-relationships { grid-column: 1;          grid-row: auto; }
+  .bmc-channels      { grid-column: 2;          grid-row: auto; }
+  .bmc-segments      { grid-column: 1 / span 2; grid-row: auto; }
+  .bmc-bottom { grid-template-columns: 1fr; }
 }
